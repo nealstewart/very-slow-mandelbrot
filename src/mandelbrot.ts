@@ -1,24 +1,37 @@
 import { scaleLinear, scaleSequential } from 'd3-scale';
 import { rgb } from 'd3-color';
-import { interpolateRdYlBu } from 'd3-scale-chromatic';
+import { memoize } from 'lodash';
+import { interpolateSpectral } from 'd3-scale-chromatic';
 
-const maxIteration = 300;
+const createColorScale = memoize((maxIterations: number) => {
+    const scale = scaleSequential(interpolateSpectral)
+        .domain([0, maxIterations]);
+    return memoize((num: number) => rgb(scale(num)));
+});
 
-export const renderMandelbrot = (canvas: HTMLCanvasElement, width: number, height: number) => {
-    const xScale = scaleLinear()
+const createXScale = memoize((width: number) =>
+    memoize(scaleLinear()
         .domain([0, width])
-        .range([-2.5, 1]);
+        .range([-2.5, 1])));
 
-    const yScale = scaleLinear()
+const createYScale = memoize((height: number) =>
+    memoize(scaleLinear()
         .domain([height, 0])
-        .range([-1, 1]);
+        .range([-1, 1])));
 
-    const colorScale = scaleSequential(interpolateRdYlBu)
-        .domain([0, maxIteration]);
+export const renderMandelbrot = (
+    canvas: HTMLCanvasElement,
+    width: number,
+    height: number,
+    magicThing: number,
+    context: CanvasRenderingContext2D,
+    imageData: ImageData,
+    maxIterations: number) => {
 
-    const context = canvas.getContext('2d')!;
+    const colorScale = createColorScale(maxIterations);
 
-    const imageData = context.createImageData(width, height);
+    const xScale = createXScale(width);
+    const yScale = createYScale(height);
 
     const actualData = imageData.data;
 
@@ -32,14 +45,14 @@ export const renderMandelbrot = (canvas: HTMLCanvasElement, width: number, heigh
             let x = 0.0;
             let y = 0.0;
 
-            while (x * x + y * y < 4 && iteration < maxIteration) {
+            while (x * x + y * y < 4 && iteration < maxIterations) {
                 const xTemp = x * x - y * y + x0;
-                y = 2 * x * y + y0;
+                y = magicThing * x * y + y0;
                 x = xTemp;
                 iteration++;
             }
 
-            const color = rgb(colorScale(iteration));
+            const color = colorScale(iteration);
 
             const pixelStart = pixelY * width * 4 + pixelX * 4;
 
