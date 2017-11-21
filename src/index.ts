@@ -1,4 +1,5 @@
 import { renderMandelbrot } from './mandelbrot';
+import './index.css';
 
 const canvas = document.createElement('canvas');
 
